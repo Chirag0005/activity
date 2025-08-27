@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Social Graph - Friend Suggestions</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Social Graph</h1>
+      <p>Graph + BFS/DFS friend suggestions</p>
+    </header>
+
+    <main class="container">
+      <section class="panel">
+        <h2>Users</h2>
+        <div class="row">
+          <input id="new-user" type="text" placeholder="New user name" />
+          <button id="add-user">Add User</button>
+        </div>
+        <ul id="user-list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Connections</h2>
+        <div class="row">
+          <input id="conn-a" type="text" placeholder="User A" />
+          <input id="conn-b" type="text" placeholder="User B" />
+          <button id="connect">Connect</button>
+          <button id="disconnect" class="secondary">Disconnect</button>
+        </div>
+        <div class="row">
+          <label>
+            <span>Inspect user:</span>
+            <select id="inspect-user"></select>
+          </label>
+        </div>
+        <div class="grid">
+          <div>
+            <h3>Friends</h3>
+            <ul id="friend-list"></ul>
+          </div>
+          <div>
+            <h3>Suggestions</h3>
+            <ul id="suggestion-list"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Traversals</h2>
+        <div class="row">
+          <input id="traverse-start" type="text" placeholder="Start user" />
+          <button id="run-bfs">Run BFS</button>
+          <button id="run-dfs" class="secondary">Run DFS</button>
+        </div>
+        <div class="row">
+          <code id="traverse-output"></code>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <small>DSA: Graph + BFS/DFS • Friend-of-friend suggestions</small>
+    </footer>
+
+    <script type="module">
+      import { socialGraph, addUser, removeUser, connect, disconnect, getSuggestionsFor } from './app.js';
+
+      const $ = (sel) => document.querySelector(sel);
+      const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+      const newUserInput = $('#new-user');
+      const addUserBtn = $('#add-user');
+      const userList = $('#user-list');
+      const connA = $('#conn-a');
+      const connB = $('#conn-b');
+      const connectBtn = $('#connect');
+      const disconnectBtn = $('#disconnect');
+      const inspectSelect = $('#inspect-user');
+      const friendList = $('#friend-list');
+      const suggestionList = $('#suggestion-list');
+      const traverseStart = $('#traverse-start');
+      const runBfsBtn = $('#run-bfs');
+      const runDfsBtn = $('#run-dfs');
+      const traverseOutput = $('#traverse-output');
+
+      function refreshUsers() {
+        // Populate users list and select
+        const users = socialGraph.getUsers().sort();
+        inspectSelect.innerHTML = users.map(u => `<option value="${u}">${u}</option>`).join('');
+        userList.innerHTML = users.map(u => (
+          `<li class="user-item">
+            <span>${u}</span>
+            <button data-user="${u}" class="danger small">Remove</button>
+          </li>`
+        )).join('');
+
+        // Default inspect selection
+        if (users.length && !users.includes(inspectSelect.value)) {
+          inspectSelect.value = users[0];
+        }
+
+        refreshFriendsAndSuggestions();
+      }
+
+      function refreshFriendsAndSuggestions() {
+        const selected = inspectSelect.value;
+        if (!selected) {
+          friendList.innerHTML = '';
+          suggestionList.innerHTML = '';
+          return;
+        }
+        const friends = Array.from(socialGraph.getFriends(selected)).sort();
+        friendList.innerHTML = friends.map(f => `<li>${f}</li>`).join('');
+
+        const suggestions = getSuggestionsFor(selected);
+        suggestionList.innerHTML = suggestions.map(s => `<li>${s.userId} <small>(${s.mutualCount} mutual)</small></li>`).join('');
+      }
+
+      // Event bindings
+      addUserBtn.addEventListener('click', () => {
+        const name = (newUserInput.value || '').trim();
+        if (!name) return;
+        addUser(name);
+        newUserInput.value = '';
+        refreshUsers();
+      });
+
+      userList.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-user]');
+        if (!btn) return;
+        const user = btn.getAttribute('data-user');
+        removeUser(user);
+        refreshUsers();
+      });
+
+      connectBtn.addEventListener('click', () => {
+        const a = (connA.value || '').trim();
+        const b = (connB.value || '').trim();
+        if (!a || !b) return;
+        connect(a, b);
+        refreshUsers();
+      });
+
+      disconnectBtn.addEventListener('click', () => {
+        const a = (connA.value || '').trim();
+        const b = (connB.value || '').trim();
+        if (!a || !b) return;
+        disconnect(a, b);
+        refreshUsers();
+      });
+
+      inspectSelect.addEventListener('change', refreshFriendsAndSuggestions);
+
+      runBfsBtn.addEventListener('click', () => {
+        const start = (traverseStart.value || '').trim();
+        const out = socialGraph.bfs(start);
+        traverseOutput.textContent = out.join(' → ');
+      });
+
+      runDfsBtn.addEventListener('click', () => {
+        const start = (traverseStart.value || '').trim();
+        const out = socialGraph.dfs(start);
+        traverseOutput.textContent = out.join(' → ');
+      });
+
+      // Initial render
+      refreshUsers();
+    </script>
+  </body>
+  </html>
+
